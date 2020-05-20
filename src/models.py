@@ -22,7 +22,7 @@ class BasicWideBlock(nn.Module):
         self.bn1 = nn.BatchNorm2d(in_channels)
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, padding=1)
         
-        self.activation = nn.ReLU()
+        self.activation = nn.LeakyReLU()
         self.dropout = nn.Dropout(dropout_p)
         
         self.bn2 = nn.BatchNorm2d(out_channels)
@@ -53,8 +53,9 @@ class BasicWideBlock(nn.Module):
 
 
 class WideResNet(nn.Module):
-    
-    def __init__(self, in_channels, first_out_channels, n_classes, k, n, dropout_p=.5):
+    '''Wide ResNet architecture with an arbitrary number of stages as described in the original paper.
+    '''
+    def __init__(self, in_channels, first_out_channels, n_classes, k, n, n_stages=3, dropout_p=.5):
         super(WideResNet, self).__init__()
         
         # first layer is a convolution
@@ -62,14 +63,19 @@ class WideResNet(nn.Module):
         self._in_channels = first_out_channels
         
         # build network stages
-        self.stage1 = self._make_stage(n, first_out_channels*k, kernel_size=3, stride=1, dropout_p=dropout_p)
-        self.stage2 = self._make_stage(n, first_out_channels*2*k, kernel_size=3, stride=2, dropout_p=dropout_p)
-        self.stage3 = self._make_stage(n, first_out_channels*4*k, kernel_size=3, stride=2, dropout_p=dropout_p)
+        stages = []
+        stages.append(self._make_stage(n, first_out_channels*k, kernel_size=3, stride=1, dropout_p=dropout_p))
         
-        self.bn = nn.BatchNorm2d(first_out_channels*4*k)
+        for i in range(1, n_stages):
+            n_out_channels = first_out_channels*(2**i)*k
+            stages.append(self._make_stage(n, n_out_channels, kernel_size=3, stride=2, dropout_p=dropout_p))
+        
+        self.stages = nn.Sequential(*stages)
+        
+        self.bn = nn.BatchNorm2d(n_out_channels)
         self.pool = nn.AdaptiveAvgPool2d(1)
-        self.activation = nn.ReLU()
-        self.linear = nn.Linear(first_out_channels*4*k, n_classes)
+        self.activation = nn.LeakyReLU()
+        self.linear = nn.Linear(n_out_channels, n_classes)
     
     def _make_stage(self, n, out_channels, kernel_size, stride, dropout_p):
         # reduce (H,W) with the stride on the first layer only
@@ -92,9 +98,7 @@ class WideResNet(nn.Module):
         out = self.conv1(x)
         
         # pass through stages
-        out = self.stage1(out)
-        out = self.stage2(out)
-        out = self.stage3(out)
+        out = self.stages(out)
         
         # bn and activation
         out = self.activation(self.bn(out))
@@ -149,7 +153,7 @@ def train(model, criterion, optimizer, dl_train, dl_val, n_epochs, restart_epoch
         if epoch % verbose == 0:
             print(f'Epoch: {epoch:3d} - Train loss: {epoch_loss:.4f} | Eval loss: {eval_loss:.4f} - Eval ROC-AUC: {eval_roc_auc:.4f}')
 
-            if epoch > min_epoch:
+            if epoch >= min_epoch:
                 if eval_roc_auc > best_eval_roc_auc:
                     trials = 0
                     best_eval_roc_auc = eval_roc_auc

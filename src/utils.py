@@ -11,6 +11,8 @@ def num2tuple(num):
 
 
 def conv2d_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
+    '''Returns the output shape after a convolution, given input size and other convolution parameters.
+    '''
     h_w, kernel_size, stride, pad, dilation = num2tuple(h_w), \
         num2tuple(kernel_size), num2tuple(stride), num2tuple(pad), num2tuple(dilation)
     pad = num2tuple(pad[0]), num2tuple(pad[1])
@@ -22,6 +24,8 @@ def conv2d_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
 
 
 def conv2d_get_padding(h_w_in, h_w_out, kernel_size=1, stride=1, dilation=1):
+    '''Returns required padding given input size, convolution parameters and desired output size.
+    '''
     h_w_in, h_w_out, kernel_size, stride, dilation = num2tuple(h_w_in), num2tuple(h_w_out), \
         num2tuple(kernel_size), num2tuple(stride), num2tuple(dilation)
     
@@ -32,10 +36,14 @@ def conv2d_get_padding(h_w_in, h_w_out, kernel_size=1, stride=1, dilation=1):
 
 
 def mean_column_wise_roc_auc(y_hat, y):
+    '''Compute the column averages AUC score (AUC mean over different classes).
+    '''
     return roc_auc_score(y, y_hat, average='macro')
 
 
 def plot_samples(ds):
+    '''Plot some samples and their transformed version.
+    '''
     n_samples = 6
     n_rows = 2
     n_cols = n_samples // n_rows 

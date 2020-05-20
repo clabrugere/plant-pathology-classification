@@ -9,7 +9,9 @@ from . import config
 
 
 class PlantPathology(Dataset):
-    
+    '''Class that represents the images dataset. It allows to feed DataLoader with transformed images and corresponding labels to a model for training.
+    Inherits from Dataset class.
+    '''
     def __init__(self, df, label_cols=None, is_test=False, apply_transforms=True, to_tensor=True):
         
         self.is_test = is_test
@@ -80,7 +82,7 @@ class PlantPathology(Dataset):
 
 
 def stratified_split(df, label_cols, test_size=.2, shuffle=True):
-    '''split a dataframe into a training and validation while preserving classes distributions
+    '''Split a dataframe into a training and validation while preserving classes distributions
     '''
     train, test, _, _ = train_test_split(df, df[label_cols], test_size=test_size, stratify=df[label_cols], shuffle=True)
     
@@ -89,7 +91,7 @@ def stratified_split(df, label_cols, test_size=.2, shuffle=True):
 
     
 def oversample(df, label_cols, factor, balance_classes=True):
-    '''duplicate samples in a dataframe according to the classes distributions and a multiplying factor
+    '''Duplicate samples in a dataframe according to the classes distributions and a multiplying factor
     '''
     if balance_classes:
         class_balance = df[label_cols].sum(axis=0) / df[label_cols].shape[0]
