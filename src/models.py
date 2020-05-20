@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.init as init
 import torch.nn.functional as F
 import numpy as np
+from . import config, utils
 
 
 def weight_init(m):
@@ -104,4 +105,120 @@ class WideResNet(nn.Module):
         out = self.linear(out)
         
         return out
+
+
+def train(model, criterion, optimizer, dl_train, dl_val, n_epochs, restart_epoch, model_name, min_epoch=10, patience=5, verbose=1):
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
     
+    loss_history = []
+    eval_loss_history = []
+    eval_roc_auc_history = []
+    best_eval_roc_auc = 0
+    trials = 0
+    
+    for epoch in range(restart_epoch, n_epochs + 1):
+        # perform a full pass on the dataset
+        model.train()
+        epoch_loss = 0
+
+        for i, batch in enumerate(dl_train):
+            X, y = [ds.to(device) for ds in batch]
+
+            # erase gradients and perform a forward pass
+            optimizer.zero_grad()
+            y_hat = model(X)
+            # compute loss and perform a backward pass
+            loss = criterion(y_hat, torch.argmax(y, dim=1))
+            
+            epoch_loss += loss.item()
+            loss.backward()
+            optimizer.step()
+
+            del X, y
+            torch.cuda.empty_cache()
+
+        epoch_loss /= len(dl_train.dataset)
+        loss_history.append(epoch_loss)
+        
+        # evaluate
+        eval_loss, eval_roc_auc, _, _ = evaluate(model, criterion, optimizer, dl_val)
+        eval_loss_history.append(eval_loss)
+        eval_roc_auc_history.append(eval_roc_auc)
+
+        if epoch % verbose == 0:
+            print(f'Epoch: {epoch:3d} - Train loss: {epoch_loss:.4f} | Eval loss: {eval_loss:.4f} - Eval ROC-AUC: {eval_roc_auc:.4f}')
+
+            if epoch > min_epoch:
+                if eval_roc_auc > best_eval_roc_auc:
+                    trials = 0
+                    best_eval_roc_auc = eval_roc_auc
+                    
+                    torch.save({
+                        'epoch': epoch,
+                        'model_state_dict': model.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                    }, config.get_model_filename(model_name))
+
+                else:
+                    trials += 1
+                    if trials >= patience:
+                        print(f'Early stopping on epoch {epoch}')
+                        break
+    
+    return loss_history, eval_loss_history, eval_roc_auc_history
+
+
+def evaluate(model, criterion, optimizer, dl_val):
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    
+    model.eval()
+    eval_loss = 0
+    
+    with torch.no_grad():
+        y_val_hat_running = torch.tensor([], device=device)
+        y_val_running = torch.tensor([], dtype=torch.long, device=device)
+        
+        for batch in dl_val:
+            X, y = [ds.to(device) for ds in batch]
+            y_hat = model(X)
+
+            loss = criterion(y_hat, torch.argmax(y, dim=1))
+            eval_loss += loss.item()
+            
+            y_hat = torch.softmax(y_hat, dim=1)
+            
+            y_val_hat_running = torch.cat([y_val_hat_running, y_hat], 0)
+            y_val_running = torch.cat([y_val_running, y], 0)
+
+            del X, y
+            torch.cuda.empty_cache()
+            
+    y_val_hat_running = y_val_hat_running.cpu().numpy()
+    y_val_running = y_val_running.cpu().numpy()
+    
+    eval_loss /= len(dl_val.dataset)
+    eval_roc_auc = utils.mean_column_wise_roc_auc(y_val_hat_running, y_val_running)
+    
+    return eval_loss, eval_roc_auc, y_val_hat_running, y_val_running
+
+
+def predict(model, dl_test):
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    model = model.to(device)
+    
+    model.eval()
+    y_hat_running = torch.tensor([], device=device)
+    
+    with torch.no_grad():
+        for batch in dl_test:
+            X = [ds.to(device) for ds in batch]
+            y_hat = model(X)            
+            y_hat = torch.softmax(y_hat, dim=1)
+            y_hat_running = torch.cat([y_val_hat_running, y_hat], 0)
+            
+            del X
+            torch.cuda.empty_cache()
+    
+    return y_hat_running.cpu().numpy()

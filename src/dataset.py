@@ -29,8 +29,10 @@ class PlantPathology(Dataset):
         
         self.transforms = Compose([
             Flip(p=0.8),
-            RandomScale(p=1.),
-            ShiftScaleRotate(rotate_limit=180, p=1.),
+            ShiftScaleRotate(shift_limit=0.05,
+                             scale_limit=0.2,
+                             rotate_limit=90,
+                             p=1.),
             RandomBrightnessContrast(p=1.),
             OneOf([
                 IAASharpen(),
@@ -38,8 +40,7 @@ class PlantPathology(Dataset):
             ], p=0.5),
             RandomCrop(1024, 1024, p=1.),
             Resize(64, 64),
-            Equalize(by_channels=False)
-            #CLAHE(clip_limit=(1, 4), tile_grid_size=(8, 8), p=1.),
+            CLAHE(clip_limit=(1, 4), tile_grid_size=(8, 8), p=1.),
         ])
     
     def __len__(self):
@@ -87,11 +88,14 @@ def stratified_split(df, label_cols, test_size=.2, shuffle=True):
     
 
     
-def oversample(df, label_cols, factor):
+def oversample(df, label_cols, factor, balance_classes=True):
     '''duplicate samples in a dataframe according to the classes distributions and a multiplying factor
     '''
-    class_balance = df[label_cols].sum(axis=0) / df[label_cols].shape[0]
-    class_balance = np.round(class_balance.max() / class_balance).astype('int8').to_dict()
+    if balance_classes:
+        class_balance = df[label_cols].sum(axis=0) / df[label_cols].shape[0]
+        class_balance = np.round(class_balance.max() / class_balance).astype('int8').to_dict()
+    else:
+        class_balance = {k: 1 for k in label_cols}
     
     for k, v in class_balance.items():
         df = df.append([df[df[k] == 1]]*factor*v, ignore_index=True)
