@@ -85,3 +85,56 @@ def plot_samples(ds):
     ds.to_tensor = True
     
     return fig
+
+
+def plot_samples_predictions(ds, y_hat):
+    '''Plot some samples and the predictions.
+    '''
+    n_samples = 6
+    n_rows = 2
+    n_cols = n_samples // n_rows 
+
+    samples = np.random.choice(
+        [i for i in range(len(ds))],
+        size=n_samples,
+        replace=False
+    )
+    ds.apply_transforms = False
+    ds.to_tensor = False
+    
+    fig = plt.figure(figsize=(32, 8))
+    outer = gridspec.GridSpec(n_rows, n_cols, wspace=0.1, hspace=0.5)
+    
+    for i in range(n_rows * n_cols):
+        inner = gridspec.GridSpecFromSubplotSpec(1, 2, subplot_spec=outer[i], wspace=0.1, hspace=0.1)
+        
+        img_original, label = ds[samples[i]]
+        prediction = y_hat[samples[i]]
+        
+        ax = plt.Subplot(fig, inner[0])
+        ax.imshow(cv2.cvtColor(img_original, cv2.COLOR_BGR2RGB))
+        ax.set_title(ds.label_from_vect(label))
+        ax.set_xticks([])
+        ax.set_yticks([])
+        fig.add_subplot(ax)
+        
+        colors = ['grey' if (x < max(prediction)) else 'firebrick' for x in prediction]
+        ax = plt.Subplot(fig, inner[1])
+        ax.bar(
+            x=ds.label_cols,
+            height=prediction,
+            color=colors
+        )
+        fig.add_subplot(ax)
+        plt.xticks(rotation=45)
+    
+    ds.apply_transforms = True
+    ds.to_tensor = True
+    
+    return fig
+
+
+def count_trainable_parameters(model):
+    '''Returns the number of trainable weights of a given pytorch model
+    '''
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
