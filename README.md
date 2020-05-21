@@ -6,14 +6,14 @@ This is a little project to practice images classification and state-of-the-art 
 The dataset is composed of two sets of 1841 high definition images of apple tree leafs, covering four categories of them: healthy, scab infected, rust infected and infected with multiple diseases. The goal is map unseen images to those classes.
 
 ## Project structure
-The repository is organized around a notebook implementing each steps of the exercise:
-* Loading data, and instantiating the custom class representing training, validation and test datasets, implemented in **dataset.py**. Pytorch is the main library used for modeling, and as such a derivate of its abstract class Dataset is used to define images transformations and supply (sample, label) tuples for training and validation, or sample for testing. the package **albumentations** is used to transform the images. Because the training set is rather small, a simple oversampling strategy is implemented: each image is used several times with randomized transforms. Some images and their respective transformed versions are shown.
+The repository is organized around a notebook implementing each steps of a classic ML experiment pipeline:
+* Loading data and instantiating the custom class representing training, validation and test datasets, implemented in **dataset.py**. Pytorch is the main library used for modeling, and as such a derivate of its abstract class Dataset is used to define images transformations and supply (sample, label) tuples for training and validation, or samples singletons for testing. The package **albumentations** is used to apply variety of transforms to the images. Because the training set is rather small, a simple oversampling strategy is implemented: each image is used several times with randomized transforms.
 
-* Modeling, training and evaluation. The model is a custom implementation of the wide variant of the ResNet architecture, as described in the paper [Wide Residual Networks](https://arxiv.org/pdf/1605.07146v2.pdf) and found in **models.py**. This project being mainly to practice pytorch and CNN architecture, no pre-trained or pre-implemented models are used. These architecture having a lot of parameters and thus tends to easily overfit, only a rather shallow one is used here as the dataset is quite small.
+* Modeling, training and evaluation. The model is a custom implementation of the wide variant of the ResNet architecture, as described in the paper [Wide Residual Networks](https://arxiv.org/pdf/1605.07146v2.pdf) and found in **models.py**. This goal of this project being mainly to practice pytorch and CNN architectures, no pre-trained or pre-implemented models are used. These architectures have a lot of parameters and are known to easily overfit on small datasets, hence only a rather shallow one is used.
 
 For readability, most of the code is packaged dedicated files:
 * dataset custom class and data utilities in dataset.py
-* Wide ResNet implementation in models.py
+* Wide ResNet implementation, training/validation loops in models.py
 
 ## Getting Started
 
@@ -29,11 +29,12 @@ data/
 
 ### Requirements
 
-* Python 3.7
+* python 3.7
 * numpy
 * pandas
-* plotly
 * matplotlib
+* cv2
+* albumentations
 * pytorch
 * sklearn
 
