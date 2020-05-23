@@ -23,7 +23,7 @@ class BasicWideBlock(nn.Module):
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size, padding=1)
         
         self.activation = nn.LeakyReLU()
-        self.dropout = nn.Dropout(dropout_p)
+        self.dropout = nn.Dropout2d(dropout_p)
         
         self.bn2 = nn.BatchNorm2d(out_channels)
         self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size, stride, padding=1)
